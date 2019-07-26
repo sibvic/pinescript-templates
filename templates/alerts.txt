@@ -1,0 +1,215 @@
+//@version=4
+// Developed by ProfitRobots: https://github.com/sibvic/pinescript-templates
+study("Study", overlay = true)
+
+// Alert module v 1.12
+
+last_signal = 0
+last_signal_prev = na(last_signal[1]) ? 0 : last_signal[1]
+in_buy  = last_signal_prev > 0
+in_sell = last_signal_prev < 0
+
+// ==========
+buy_signal        = TODO ? 1 : 0
+sell_signal       = TODO ? 1 : 0
+close_buy_signal  = in_buy  and TODO
+close_sell_signal = in_sell and TODO
+// ==========
+
+EOT   = input(false, "End of turn Alerts")
+shift = not EOT ? 0 : 1
+
+max_positions = input(1, "Max positions")
+
+Buy  = change(buy_signal[shift])  == 1 and (barstate.isnew or not EOT) and (not in_buy  or last_signal_prev <  max_positions)
+Sell = change(sell_signal[shift]) == 1 and (barstate.isnew or not EOT) and (not in_sell or last_signal_prev > -max_positions)
+
+last_buy_price  = valuewhen(Buy,  close, 0)
+last_sell_price = valuewhen(Sell, close, 0)
+
+BuyBreakevenHit(be_type, last_price, trigger) =>
+    hit = false
+    if (be_type == "Pips")
+        hit := (close - last_price) >= trigger * 10 * syminfo.mintick
+    else
+        hit := (100 * (close - last_price)) / last_price >= trigger
+    hit
+
+SellBreakevenHit(be_type, last_price, trigger) =>
+    hit = false
+    if (be_type == "Pips")
+        hit := (last_price - close) >= trigger * 10 * syminfo.mintick
+    else
+        hit := (100 * (last_price - close)) / last_price >= trigger
+    hit
+
+GetBreakevenLevel(by_type, isBuy, last_price, target) =>
+    level = 0.0
+    if (isBuy)
+        if (by_type == "Pips")
+            level := last_price + target * 10 * syminfo.mintick
+        else
+            level := last_price + last_price * target / 100
+    else
+        if (by_type == "Pips")
+            level := last_price - target * 10 * syminfo.mintick
+        else
+            level := last_price - last_price * target / 100
+    level
+
+FixedStopLevel(is_buy, type, value, value_bars) =>
+    float stop = na
+    mult = is_buy ? -1 : 1
+    if (type == "Fixed rate shift")
+        stop := close + value * mult
+    if (type == "Pips")
+        stop := close + value * 10 * syminfo.mintick * mult
+    if (type == "%")
+        stop := close + close * value / 100 * mult
+    if (type == "Min/max of x candles")
+        if (is_buy)
+            stop := lowest(low, value_bars)
+        else
+            stop := highest(high, value_bars)
+    stop
+
+FixedLimitLevel(is_buy, type, value, value_bars) =>
+    float limit = na
+    mult = is_buy ? -1 : 1
+    if (type == "Fixed rate shift")
+        limit := close - value * mult
+    if (type == "Pips")
+        limit := close - value * 10 * syminfo.mintick * mult
+    if (type == "%")
+        limit := close - close * value / 100 * mult
+    if (type == "Min/max of x candles")
+        if (is_buy)
+            limit := highest(high, value_bars)
+        else
+            limit := lowest(low, value_bars)
+    limit
+
+stop_type             = input("Do not use", "Stop loss type", input.string, options = ["Do not use", "%", "Fixed rate shift", "ATR", "Pips", "Min/max of x candles"])
+stop                  = input(1, "Stop loss", input.float)
+stop_bars             = input(10, "Stop loss, bars (min/max)")
+stop_atr_length       = input(5, "Stop ATR Length")
+stop_atr_mult         = input(1.5, "Stop ATR Multiplier", input.float)
+trailing_sl_type      = input("Do not use", "SL/TP Trailing Type", options = ["Do not use", "%", "Pips"])
+trailing_sl_trigger   = input(10, "Trailing start after", input.float)
+trailing_sl_target    = input(10, "Trailing distance, pips", input.float)
+breakeven_use         = input("Do not use", "Use breakeven", options = ["Do not use", "Pips", "%"])
+breakeven_trigger     = input(10, "Move stop on profit", input.float)
+breakeven_target      = input(0, "Move stop to", input.float)
+buy_fixed_stop_level  = valuewhen(Buy, FixedStopLevel(true, stop_type, stop, stop_bars), 0)
+buy_breakeven_level   = valuewhen(Buy or in_buy and BuyBreakevenHit(breakeven_use, last_buy_price, breakeven_trigger), Buy ? na : GetBreakevenLevel(breakeven_use, true, last_buy_price, breakeven_target), 0) 
+sell_fixed_stop_level = valuewhen(Sell, FixedStopLevel(false, stop_type, stop, stop_bars), 0)
+sell_breakeven_level  = valuewhen(Sell or in_sell and SellBreakevenHit(breakeven_use, last_sell_price, breakeven_trigger), Sell ? na : GetBreakevenLevel(breakeven_use, false, last_sell_price, breakeven_target), 0)
+
+limit_type             = input("Do not use", "Take profit type", input.string, options = ["Do not use", "%", "Fixed rate shift", "ATR", "Pips", "Min/max of x candles"])
+limit                  = input(1, "Take profit", input.float)
+limit_bars             = input(10, "Take profit, bars (min/max)")
+limit_atr_length       = input(5, "Take profit ATR Length")
+limit_atr_mult         = input(1.5, "Take profit ATR Multiplier", input.float)
+buy_fixed_limit_level  = valuewhen(Buy,  FixedLimitLevel(true,  limit_type, limit, limit_bars), 0)
+sell_fixed_limit_level = valuewhen(Sell, FixedLimitLevel(false, limit_type, limit, limit_bars), 0)
+
+buy_stop   = stop_type  == "Do not use" ? na : na(buy_fixed_stop_level)   ? last_buy_price  - atr(stop_atr_length)  * stop_atr_mult  : buy_fixed_stop_level
+sell_stop  = stop_type  == "Do not use" ? na : na(sell_fixed_stop_level)  ? last_sell_price + atr(stop_atr_length)  * stop_atr_mult  : sell_fixed_stop_level
+buy_limit  = limit_type == "Do not use" ? na : na(buy_fixed_limit_level)  ? last_buy_price  + atr(limit_atr_length) * limit_atr_mult : buy_fixed_limit_level
+sell_limit = limit_type == "Do not use" ? na : na(sell_fixed_limit_level) ? last_sell_price - atr(limit_atr_length) * limit_atr_mult : sell_fixed_limit_level
+
+GetTrailingPrice(isBuy, lastPrice, triggerType, triggerValue) =>
+    float res = na
+    if (triggerType == "Pips")
+        if (isBuy)
+            res := lastPrice + triggerValue * 10 * syminfo.mintick
+        else
+            res := lastPrice - triggerValue * 10 * syminfo.mintick
+    if (triggerType == "%")
+        if (isBuy)
+            res := lastPrice + lastPrice * triggerValue / 100
+        else
+            res := lastPrice - lastPrice * triggerValue / 100
+    res
+
+b_trail_price = GetTrailingPrice(true, last_buy_price, trailing_sl_type, trailing_sl_trigger)
+s_trail_price = GetTrailingPrice(false, last_sell_price, trailing_sl_type, trailing_sl_trigger)
+b_trail_offset = trailing_sl_type != "Do not use" ? trailing_sl_target * 10 : na
+s_trail_offset = trailing_sl_type != "Do not use" ? trailing_sl_target * 10 : na
+b_trailing_stop_value = valuewhen(trailing_sl_type != "Do not use" and (Buy or close > b_trail_price), Buy ? na : close - b_trail_offset * syminfo.mintick, 0)
+s_trailing_stop_value = valuewhen(trailing_sl_type != "Do not use" and (Sell or close < s_trail_price), Sell ? na : close + s_trail_offset * syminfo.mintick, 0)
+
+GetStopLevel(isBuy, be, stop, trailing) =>
+    float stopVal = stop
+    if (isBuy)
+        if (not na(be))
+            stopVal := max(be, stop)
+        if (not na(trailing))
+            stopVal := max(trailing, stop)
+    else
+        if (not na(be))
+            stopVal := min(be, stop)
+        if (not na(trailing))
+            stopVal := min(trailing, stop)
+    stopVal
+
+buy_stop_be    = GetStopLevel(true,  buy_breakeven_level,  buy_stop,  b_trailing_stop_value)
+sell_stop_be   = GetStopLevel(false, sell_breakeven_level, sell_stop, s_trailing_stop_value)
+buy_stop_hit   = in_buy  and not na(buy_stop_be)  and low  <= buy_stop_be
+sell_stop_hit  = in_sell and not na(sell_stop_be) and high >= sell_stop_be
+buy_limit_hit  = in_buy  and not na(buy_limit)    and high >= buy_limit
+sell_limit_hit = in_sell and not na(sell_limit)   and low  <= sell_limit
+
+GetPositionsCount(buy, sell, count) =>
+    c = count
+    if (buy)
+        if (count < 0)
+            c := 1
+        else
+            c := count + 1
+    if (sell)
+        if (count > 0)
+            c := -1
+        else
+            c := count - 1
+    c
+
+close_buy  = close_buy_signal  and not Sell and (barstate.isnew or not EOT)
+close_sell = close_sell_signal and not Buy and (barstate.isnew or not EOT)
+
+last_signal := close_buy or close_sell or buy_stop_hit or sell_stop_hit or buy_limit_hit or sell_limit_hit ? (Buy ? 1 : (Sell ? -1 : 0)) : GetPositionsCount(Buy, Sell, last_signal_prev)
+
+show_stop = input(false, "Show stop (Debug)")
+plot(show_stop and in_buy ? buy_stop_be : na, "Buy stop", color = color.green, style = plot.style_stepline)
+plot(show_stop and in_sell ? sell_stop_be : na, "Sell stop", color = color.red, style = plot.style_stepline)
+
+bgcolor       (buy_stop_hit ? (last_buy_price > close ? color.red : color.yellow) : na, transp = 70)
+alertcondition(buy_stop_hit, "Buy stop alert", "Buy stop alert")
+
+bgcolor       (sell_stop_hit ? (last_sell_price < close ? color.red : color.yellow) : na, transp = 70)
+alertcondition(sell_stop_hit, "Sell stop alert", "Sell stop alert")
+
+bgcolor       (buy_limit_hit ? color.green : na)
+alertcondition(buy_limit_hit, "Buy take profit alert", "Buy take profit alert")
+
+bgcolor       (sell_limit_hit ? color.green : na)
+alertcondition(sell_limit_hit, "Sell take profit alert", "Sell take profit alert")
+
+plotchar      (close_buy, "Exit Buy", "E", size = size.tiny, color = color.lime)
+plotarrow     (close_buy ? 1 : 0, maxheight = 40, title = "Exit Buy", colorup = color.lime)
+alertcondition(close_buy, "Close buy alert", "Close buy alert")
+
+plotchar      (close_sell, "Exit Sell", "E", location.belowbar, size = size.tiny, color = color.red)
+plotarrow     (close_sell ? -1 : 0, maxheight = 40, title = "Exit Sell")
+alertcondition(close_sell, "Close sell alert", "Close sell alert")
+alertcondition(close_sell or close_buy or buy_stop_hit or sell_stop_hit or buy_limit_hit or sell_limit_hit, "Autoview: Close", "a=[your_account] e=bitmex-testnet c=position t=market ro=1")
+
+plotchar      (Buy, "Buy", "B", size = size.tiny, color = color.lime)
+plotarrow     (Buy ? 1 : 0, maxheight = 40, title = "Buy", colorup = color.lime)
+alertcondition(Buy, "Buy alert", "Buy alert")
+alertcondition(Buy, "Autoview: Buy", "a=[your_account] e=bitmex-testnet s=[your_instrument] b=buy t=market q=[number_of_lots]")
+
+plotchar      (Sell, "Sell", "S", location.belowbar, size = size.tiny, color = color.red)
+plotarrow     (Sell ? -1 : 0, maxheight = 40, title = "Sell")
+alertcondition(Sell, "Sell alert", "Sell alert")
+alertcondition(Sell, "Autoview: Sell", "a=[your_account] e=bitmex-testnet s=[your_instrument] b=sell t=market q=[number_of_lots]")
