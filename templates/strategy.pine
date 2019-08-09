@@ -105,7 +105,6 @@ breakeven_use         = input("Do not use", "Use breakeven", options = ["Do not 
 breakeven_trigger     = input(10, "Move stop on profit", float)
 breakeven_target      = input(0, "Move stop to", float)
 buy_fixed_stop_level  = valuewhen(Buy, FixedStopLevel(true, stop_type, stop, stop_bars), 0)
-buy_fixed_stop_level  = valuewhen(Buy, FixedStopLevel(true, stop_type, stop, stop_bars), 0)
 buy_breakeven_level   = valuewhen(Buy or in_buy and BuyBreakevenHit(breakeven_use, last_buy_price, breakeven_trigger), Buy ? na : GetBreakevenLevel(breakeven_use, true, last_buy_price, breakeven_target), 0) 
 sell_fixed_stop_level = valuewhen(Sell, FixedStopLevel(false, stop_type, stop, stop_bars), 0)
 sell_breakeven_level  = valuewhen(Sell or in_sell and SellBreakevenHit(breakeven_use, last_sell_price, breakeven_trigger), Sell ? na : GetBreakevenLevel(breakeven_use, false, last_sell_price, breakeven_target), 0)

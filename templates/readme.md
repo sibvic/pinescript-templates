@@ -28,12 +28,12 @@ So, this indicator can detect the next cases:
 
 Study with alerts
 
-* End of turn Alerts (Study/indicator only)
+* End of turn Alerts
 
   Backtester in the tradingview works on candle close and the forwardtesting can work on candle close or on each tick (depending on the Recalculate on every tick parameter of the strategy). When you add the strategy to the chart the strategy work on all historical data up till the moment you add it in the backtesting mode (on candle close only). And all new bars/candle executed in forwardtesting mode (can be on candle close or on every tick). But after you refresh the chart/reload the page or change the chart parameters (instrument, period etc) the strategy will recalculate all data (including the candles calculated in the forwardtesting mode) in the backtesting mode. This can case the repainting issue. According to my research the "Recalculate On Every Tick" doesn't work and the strategy forwardtested in every tick (it looks like a bug in TradingView).
   The study works the same - on candle close for the historical data and on every tick for the new candles. The study doesn't have a built-in option to calculate the values on candle close only. This parameter designed to do exactly that. Turn it on to get the study calculated on candle close. This helps to avoid the repainting issue for the study.
 
-* Show stop (Debug, study/indicator only)
+* Show stop (Debug)
   
   This option designed to help you understand where the stops are placed. 
 
