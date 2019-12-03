@@ -1,4 +1,4 @@
-//@version=3
+//@version=4
 // Developed by ProfitRobots: https://github.com/sibvic/pinescript-templates
 strategy("Strategy", overlay = true, pyramiding = 100)
 
@@ -62,7 +62,7 @@ GetBreakevenLevel(by_type, isBuy, last_price, target) =>
     level
 
 FixedStopLevel(is_buy, type, value, value_bars) =>
-    stop = na
+    float stop = na
     mult = is_buy ? -1 : 1
     if (type == "Fixed rate shift")
         stop := close + value * mult
@@ -78,7 +78,7 @@ FixedStopLevel(is_buy, type, value, value_bars) =>
     stop
 
 FixedLimitLevel(is_buy, type, value, value_bars) =>
-    limit = na
+    float limit = na
     mult = is_buy ? -1 : 1
     if (type == "Fixed rate shift")
         limit := close - value * mult
@@ -93,27 +93,27 @@ FixedLimitLevel(is_buy, type, value, value_bars) =>
             limit := lowest(low, value_bars)
     limit
 
-stop_type             = input("Do not use", "Stop loss type", string, options = ["Do not use", "%", "Fixed rate shift", "ATR", "Pips", "Min/max of x candles"])
-stop                  = input(1, "Stop loss", float)
+stop_type             = input("Do not use", "Stop loss type", input.string, options = ["Do not use", "%", "Fixed rate shift", "ATR", "Pips", "Min/max of x candles"])
+stop                  = input(1, "Stop loss", input.float)
 stop_bars             = input(10, "Stop loss, bars (min/max)")
 stop_atr_length       = input(5, "Stop ATR Length")
-stop_atr_mult         = input(1.5, "Stop ATR Multiplier", float)
+stop_atr_mult         = input(1.5, "Stop ATR Multiplier", input.float)
 trailing_sl_type      = input("Do not use", "SL/TP Trailing Type", options = ["Do not use", "%", "Pips"])
-trailing_sl_trigger   = input(10, "Trailing start after", float)
-trailing_sl_target    = input(10, "Trailing distance, pips", float)
+trailing_sl_trigger   = input(10, "Trailing start after", input.float)
+trailing_sl_target    = input(10, "Trailing distance, pips", input.float)
 breakeven_use         = input("Do not use", "Use breakeven", options = ["Do not use", "Pips", "%"])
-breakeven_trigger     = input(10, "Move stop on profit", float)
-breakeven_target      = input(0, "Move stop to", float)
+breakeven_trigger     = input(10, "Move stop on profit", input.float)
+breakeven_target      = input(0, "Move stop to", input.float)
 buy_fixed_stop_level  = valuewhen(Buy, FixedStopLevel(true, stop_type, stop, stop_bars), 0)
 buy_breakeven_level   = valuewhen(Buy or in_buy and BuyBreakevenHit(breakeven_use, last_buy_price, breakeven_trigger), Buy ? na : GetBreakevenLevel(breakeven_use, true, last_buy_price, breakeven_target), 0) 
 sell_fixed_stop_level = valuewhen(Sell, FixedStopLevel(false, stop_type, stop, stop_bars), 0)
 sell_breakeven_level  = valuewhen(Sell or in_sell and SellBreakevenHit(breakeven_use, last_sell_price, breakeven_trigger), Sell ? na : GetBreakevenLevel(breakeven_use, false, last_sell_price, breakeven_target), 0)
 
-limit_type             = input("Do not use", "Take profit type", string, options = ["Do not use", "%", "Fixed rate shift", "ATR", "Pips", "Min/max of x candles"])
-limit                  = input(1, "Take profit", float)
+limit_type             = input("Do not use", "Take profit type", input.string, options = ["Do not use", "%", "Fixed rate shift", "ATR", "Pips", "Min/max of x candles"])
+limit                  = input(1, "Take profit", input.float)
 limit_bars             = input(10, "Take profit, bars (min/max)")
 limit_atr_length       = input(5, "Take profit ATR Length")
-limit_atr_mult         = input(1.5, "Take profit ATR Multiplier", float)
+limit_atr_mult         = input(1.5, "Take profit ATR Multiplier", input.float)
 buy_fixed_limit_level  = valuewhen(Buy,  FixedLimitLevel(true,  limit_type, limit, limit_bars), 0)
 sell_fixed_limit_level = valuewhen(Sell, FixedLimitLevel(false, limit_type, limit, limit_bars), 0)
 
@@ -144,7 +144,7 @@ GetPositionsCount(buy, sell, count) =>
     c
 
 GetTrailingPrice(isBuy, lastPrice, triggerType, triggerValue) =>
-    res = na
+    float res = na
     if (triggerType == "Pips")
         if (isBuy)
             res := lastPrice + triggerValue * 10 * syminfo.mintick
